@@ -1,0 +1,2 @@
+include ':app'
+rootProject.name = "TK3_Project"
