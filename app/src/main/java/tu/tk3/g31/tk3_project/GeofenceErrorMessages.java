@@ -1,3 +1,8 @@
+/*
+   Parts of this class are based on code from google:
+   https://github.com/android/location-samples
+ */
+
 package tu.tk3.g31.tk3_project;
 
 import android.content.Context;

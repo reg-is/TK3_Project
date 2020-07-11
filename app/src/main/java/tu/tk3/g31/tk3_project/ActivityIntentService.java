@@ -1,3 +1,8 @@
+/*
+   Parts of this class are based on code from AndroidAuthority:
+   https://www.androidauthority.com/using-the-activity-recognition-api-829339/
+ */
+
 package tu.tk3.g31.tk3_project;
 
 import android.app.IntentService;
