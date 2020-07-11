@@ -90,8 +90,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                                 .getString(MainActivity.DETECTED_ACTIVITY, ""));
 
                 for (DetectedActivity d : detectedActivities) {
-                    if (true || (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
-                        d.getType() == DetectedActivity.RUNNING && d.getConfidence() >= 30)) {
+                    if (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
+                        d.getType() == DetectedActivity.RUNNING && d.getConfidence() >= 30) {
                         //Trigger RMV
                         openRMVDepartures();
                         break;
@@ -123,8 +123,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                                 .getString(MainActivity.DETECTED_ACTIVITY, ""));
 
                 for (DetectedActivity d : detectedActivities) {
-                    if (true || (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
-                            d.getType() == DetectedActivity.STILL && d.getConfidence() <= 20)) {
+                    if (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
+                            d.getType() == DetectedActivity.STILL && d.getConfidence() <= 20) {
                         //Trigger MENSA
                         openMensaApp();
                         break;
