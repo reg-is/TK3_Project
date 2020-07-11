@@ -18,7 +18,7 @@ public class Constants {
     private static final String PACKAGE_NAME = "com.google.android.gms.location.Geofence";
     static final String GEOFENCES_ADDED_KEY = PACKAGE_NAME + ".GEOFENCES_ADDED_KEY";
 
-    static final float GEOFENCE_RADIUS_IN_METERS = 150;
+    static final float GEOFENCE_RADIUS_IN_METERS = 100;
 
     /**
      * Map for storing information about airports in the San Francisco bay area.
@@ -28,7 +28,7 @@ public class Constants {
 
     static {
         // Schloss
-        RMV_LANDMARKS.put("RMV_Schloss", new LatLng(49.872886,8.655337));
+        RMV_LANDMARKS.put("RMV_Alexanderstraße", new LatLng(49.8756,8.6603));
 
         // Mensa
         MENSA_LANDMARKS.put("MENSA_Stadtmitte", new LatLng(49.8758, 8.6578));

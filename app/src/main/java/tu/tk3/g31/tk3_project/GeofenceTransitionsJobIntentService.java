@@ -13,10 +13,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.location.Geofence;
@@ -58,11 +60,17 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             return;
         }
 
+        sendNotification("Wörk");
+        Log.w(TAG, "Wörk");
+
         // Get the transition type.
         int geofenceTransition = geofencingEvent.getGeofenceTransition();
 
         /* === RMV === */
-        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+        boolean rmvEnabled = PreferenceManager.getDefaultSharedPreferences(this).getBoolean(".RmvEnabled", false);
+        if (rmvEnabled && geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+            Log.w(TAG, "ENTER RMV");
+
             // Get the geofences that were triggered. A single event can trigger multiple geofences.
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
 
@@ -70,26 +78,32 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
 
             // Get the Ids of each geofence that was triggered.
             ArrayList<String> triggeringGeofencesIdsList = new ArrayList<>();
+            boolean rmv = false;
             for (Geofence geofence : triggeringGeofences) {
                 triggeringGeofencesIdsList.add(geofence.getRequestId());
+                if (geofence.getRequestId().contains("RMV"))
+                    rmv = true;
             }
 
-            if (triggeringGeofencesIdsList.contains("RMV")) {
+            if (rmv) {
                 ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(
                         PreferenceManager.getDefaultSharedPreferences(this)
                                 .getString(MainActivity.DETECTED_ACTIVITY, ""));
 
-                boolean running = false;
                 for (DetectedActivity d : detectedActivities) {
-                    if (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
-                        d.getType() == DetectedActivity.RUNNING && d.getConfidence() >= 30) {
+                    if (true || (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
+                        d.getType() == DetectedActivity.RUNNING && d.getConfidence() >= 30)) {
                         //Trigger RMV
+                        openRMVDepartures();
+                        break;
                     }
                 }
             }
         }
 
-        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+        boolean mensaEnabled = PreferenceManager.getDefaultSharedPreferences(this).getBoolean(".MensaEnabled", false);
+        if (mensaEnabled && geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+            Log.w(TAG, "ENTER Mensa");
             // Get the geofences that were triggered. A single event can trigger multiple geofences.
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
 
@@ -97,20 +111,24 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
 
             // Get the Ids of each geofence that was triggered.
             ArrayList<String> triggeringGeofencesIdsList = new ArrayList<>();
+            boolean mensa = false;
             for (Geofence geofence : triggeringGeofences) {
                 triggeringGeofencesIdsList.add(geofence.getRequestId());
+                if (geofence.getRequestId().contains("MENSA"))
+                    mensa = true;
             }
 
-            if (triggeringGeofencesIdsList.contains("MENSA")) {
+            if (mensa) {
                 ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(
                         PreferenceManager.getDefaultSharedPreferences(this)
                                 .getString(MainActivity.DETECTED_ACTIVITY, ""));
 
-                boolean running = false;
                 for (DetectedActivity d : detectedActivities) {
-                    if (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
-                            d.getType() == DetectedActivity.STILL && d.getConfidence() <= 20) {
+                    if (true || (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
+                            d.getType() == DetectedActivity.STILL && d.getConfidence() <= 20)) {
                         //Trigger MENSA
+                        openMensaApp();
+                        break;
                     }
                 }
             }
@@ -227,5 +245,30 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             default:
                 return getString(R.string.unknown_geofence_transition);
         }
+    }
+
+    /**
+     * Opens the Tu-Darmstadt Mensa App
+     */
+    public void openMensaApp(){
+        Intent intent = getPackageManager().getLaunchIntentForPackage("de.incloud.mensaapp");
+
+        // Checks if Mensa app installed
+        if (intent == null){
+            intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=de.incloud.mensaapp"));
+        }
+        startActivity(intent);
+    }
+
+    /**
+     * Open RMV Departure View
+     */
+    public void openRMVDepartures(){
+
+        Intent intent = new Intent(this, RMVActivity.class);
+        //Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.rmv.de/auskunft/bin/jp/stboard.exe/dn?L=vs_anzeigetafel&cfgfile=DarmstadtA_3024011_1707051365&start=1"));
+        startActivity(intent);
+
+
     }
 }

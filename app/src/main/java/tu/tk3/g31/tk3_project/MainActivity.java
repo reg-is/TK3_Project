@@ -25,7 +25,9 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.ListView;
+import android.widget.Switch;
 import android.widget.Toast;
 
 import com.google.android.gms.location.ActivityRecognitionClient;
@@ -56,7 +58,6 @@ public class MainActivity extends AppCompatActivity
 
     //Define an ActivityRecognitionClient//
     private ActivityRecognitionClient mActivityRecognitionClient;
-    private ActivitiesAdapter mAdapter;
 
     /**
      * Tracks whether the user requested to add or remove geofences, or to do neither.
@@ -79,9 +80,10 @@ public class MainActivity extends AppCompatActivity
      */
     private PendingIntent mGeofencePendingIntent;
 
-    // Buttons for kicking off the process of adding or removing geofences.
-    private Button mAddGeofencesButton;
-    private Button mRemoveGeofencesButton;
+    private Switch rmvSwitch;
+    public static boolean rmvEnabled = false;
+    private Switch mensaSwitch;
+    public static boolean mensaEnabled = false;
 
     private PendingGeofenceTask mPendingGeofenceTask = PendingGeofenceTask.NONE;
 
@@ -92,31 +94,40 @@ public class MainActivity extends AppCompatActivity
 
         mContext = this;
 
-        //Retrieve the ListView where we’ll display our activity data//
-        ListView detectedActivitiesListView = (ListView) findViewById(R.id.activities_listview);
+        rmvSwitch = (Switch)findViewById(R.id.rmvSwitch);
+        rmvSwitch.setChecked(PreferenceManager.getDefaultSharedPreferences(mContext).getBoolean(".RmvEnabled", false));
+        rmvSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                rmvEnabled = isChecked;
+                PreferenceManager.getDefaultSharedPreferences(mContext).edit().putBoolean(".RmvEnabled", isChecked).apply();
+            }
+        });
 
-        ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(
-                PreferenceManager.getDefaultSharedPreferences(this).getString(
-                        DETECTED_ACTIVITY, ""));
+        mensaSwitch = (Switch) findViewById(R.id.mensaSwitch);
+        mensaSwitch.setChecked(PreferenceManager.getDefaultSharedPreferences(mContext).getBoolean(".MensaEnabled", false));
+        mensaSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                mensaEnabled = isChecked;
+                PreferenceManager.getDefaultSharedPreferences(mContext).edit().putBoolean(".MensaEnabled", isChecked).apply();
+            }
+        });
 
-        //Bind the adapter to the ListView//
-        mAdapter = new ActivitiesAdapter(this, detectedActivities);
-        detectedActivitiesListView.setAdapter(mAdapter);
         mActivityRecognitionClient = new ActivityRecognitionClient(this);
+
+        //Set the activity detection interval.
+        Task<Void> task = mActivityRecognitionClient.requestActivityUpdates(
+                Constants.ACTIVITY_RECOGNITION_INTERVAL,
+                getActivityDetectionPendingIntent());
 
 
         /* === GEOFENCING === */
-        // Get the UI widgets.
-        mAddGeofencesButton = (Button) findViewById(R.id.add_geofences_button);
-        mRemoveGeofencesButton = (Button) findViewById(R.id.remove_geofences_button);
-
         // Empty list for storing geofences.
         mGeofenceList = new ArrayList<>();
 
         // Initially set the PendingIntent used in addGeofences() and removeGeofences() to null.
         mGeofencePendingIntent = null;
-
-        setButtonsEnabledState();
 
         // Get the geofences used. Geofence data is hard coded in this sample.
         populateGeofenceList();
@@ -131,36 +142,25 @@ public class MainActivity extends AppCompatActivity
         if (!checkPermissions()) {
             requestPermissions();
         } else {
-            performPendingGeofenceTask();
+            if (!getGeofencesAdded()) {
+                addGeofences();
+            }
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        PreferenceManager.getDefaultSharedPreferences(this)
+        /*PreferenceManager.getDefaultSharedPreferences(this)
                 .registerOnSharedPreferenceChangeListener(this);
-        updateDetectedActivitiesList();
+        updateDetectedActivitiesList();*/
     }
 
     @Override
     protected void onPause() {
-        PreferenceManager.getDefaultSharedPreferences(this)
-                .unregisterOnSharedPreferenceChangeListener(this);
+        /*PreferenceManager.getDefaultSharedPreferences(this)
+                .unregisterOnSharedPreferenceChangeListener(this);*/
         super.onPause();
-    }
-
-    public void requestUpdatesHandler(View view) {
-        //Set the activity detection interval.
-        Task<Void> task = mActivityRecognitionClient.requestActivityUpdates(
-                Constants.ACTIVITY_RECOGNITION_INTERVAL,
-                getActivityDetectionPendingIntent());
-        task.addOnSuccessListener(new OnSuccessListener<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                updateDetectedActivitiesList();
-            }
-        });
     }
 
     //Get a PendingIntent//
@@ -171,20 +171,9 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    //Process the list of activities//
-    protected void updateDetectedActivitiesList() {
-        ArrayList<DetectedActivity> detectedActivities = ActivityIntentService.detectedActivitiesFromJson(
-                PreferenceManager.getDefaultSharedPreferences(mContext)
-                        .getString(DETECTED_ACTIVITY, ""));
-
-        mAdapter.updateActivities(detectedActivities);
-    }
-
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
-        if (s.equals(DETECTED_ACTIVITY)) {
-            updateDetectedActivitiesList();
-        }
+
     }
 
     /**
@@ -207,19 +196,6 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
-     * Adds geofences, which sets alerts to be notified when the device enters or exits one of the
-     * specified geofences. Handles the success or failure results returned by addGeofences().
-     */
-    public void addGeofencesButtonHandler(View view) {
-        if (!checkPermissions()) {
-            mPendingGeofenceTask = PendingGeofenceTask.ADD;
-            requestPermissions();
-            return;
-        }
-        addGeofences();
-    }
-
-    /**
      * Adds geofences. This method should be called after the user has granted the location
      * permission.
      */
@@ -232,19 +208,6 @@ public class MainActivity extends AppCompatActivity
 
         mGeofencingClient.addGeofences(getGeofencingRequest(), getGeofencePendingIntent())
                 .addOnCompleteListener(this);
-    }
-
-    /**
-     * Removes geofences, which stops further notifications when the device enters or exits
-     * previously registered geofences.
-     */
-    public void removeGeofencesButtonHandler(View view) {
-        if (!checkPermissions()) {
-            mPendingGeofenceTask = PendingGeofenceTask.REMOVE;
-            requestPermissions();
-            return;
-        }
-        removeGeofences();
     }
 
     /**
@@ -271,7 +234,7 @@ public class MainActivity extends AppCompatActivity
         mPendingGeofenceTask = PendingGeofenceTask.NONE;
         if (task.isSuccessful()) {
             updateGeofencesAdded(!getGeofencesAdded());
-            setButtonsEnabledState();
+            //setButtonsEnabledState();
 
             int messageId = getGeofencesAdded() ? R.string.geofences_added :
                     R.string.geofences_removed;
@@ -342,21 +305,6 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
-     * Ensures that only one button is enabled at any time. The Add Geofences button is enabled
-     * if the user hasn't yet added geofences. The Remove Geofences button is enabled if the
-     * user has added geofences.
-     */
-    private void setButtonsEnabledState() {
-        if (getGeofencesAdded()) {
-            mAddGeofencesButton.setEnabled(false);
-            mRemoveGeofencesButton.setEnabled(true);
-        } else {
-            mAddGeofencesButton.setEnabled(true);
-            mRemoveGeofencesButton.setEnabled(false);
-        }
-    }
-
-    /**
      * Shows a {@link Snackbar} using {@code text}.
      *
      * @param text The Snackbar text.
@@ -402,17 +350,6 @@ public class MainActivity extends AppCompatActivity
                 .edit()
                 .putBoolean(Constants.GEOFENCES_ADDED_KEY, added)
                 .apply();
-    }
-
-    /**
-     * Performs the geofencing task that was pending until location permission was granted.
-     */
-    private void performPendingGeofenceTask() {
-        if (mPendingGeofenceTask == PendingGeofenceTask.ADD) {
-            addGeofences();
-        } else if (mPendingGeofenceTask == PendingGeofenceTask.REMOVE) {
-            removeGeofences();
-        }
     }
 
     /**
@@ -468,7 +405,10 @@ public class MainActivity extends AppCompatActivity
                 Log.i(TAG, "User interaction was cancelled.");
             } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.i(TAG, "Permission granted.");
-                performPendingGeofenceTask();
+                if (!getGeofencesAdded()) {
+                    addGeofences();
+                }
+                //performPendingGeofenceTask();
             } else {
                 // Permission denied.
 
