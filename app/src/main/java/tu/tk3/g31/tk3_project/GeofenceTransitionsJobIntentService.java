@@ -60,7 +60,6 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
             return;
         }
 
-        sendNotification("Wörk");
         Log.w(TAG, "Wörk");
 
         // Get the transition type.
