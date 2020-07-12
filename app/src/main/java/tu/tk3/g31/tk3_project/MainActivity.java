@@ -4,6 +4,9 @@
 
    and AndroidAuthority:
    https://www.androidauthority.com/using-the-activity-recognition-api-829339/
+
+   and Semicolon
+   https://www.semicolonworld.com/question/48956/android-how-to-turn-on-do-not-disturb-dnd-programmatically
  */
 
 package tu.tk3.g31.tk3_project;
@@ -13,8 +16,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -84,6 +90,8 @@ public class MainActivity extends AppCompatActivity
     public static boolean rmvEnabled = false;
     private Switch mensaSwitch;
     public static boolean mensaEnabled = false;
+    private Switch bibSwitch;
+    public static boolean bibEnabled = false;
 
     private PendingGeofenceTask mPendingGeofenceTask = PendingGeofenceTask.NONE;
 
@@ -111,6 +119,17 @@ public class MainActivity extends AppCompatActivity
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 mensaEnabled = isChecked;
                 PreferenceManager.getDefaultSharedPreferences(mContext).edit().putBoolean(".MensaEnabled", isChecked).apply();
+            }
+        });
+
+        bibSwitch = (Switch) findViewById(R.id.bibSwitch);
+        bibSwitch.setChecked(PreferenceManager.getDefaultSharedPreferences(mContext).getBoolean(".BibEnabled", false));
+        bibSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                // If turned on and access to Do Not Disturb is not allowed
+                if (isChecked && !checkPermissionDoNotDisturb())
+                    requestPermissionDoNotDisturb();
             }
         });
 
@@ -150,6 +169,13 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     protected void onResume() {
+
+        // Update State of Bib Mode
+        boolean isAllowed = checkPermissionDoNotDisturb();
+        bibEnabled = isAllowed;
+        bibSwitch.setChecked(isAllowed);
+        PreferenceManager.getDefaultSharedPreferences(mContext).edit().putBoolean(".BibEnabled", isAllowed).apply();
+
         super.onResume();
         /*PreferenceManager.getDefaultSharedPreferences(this)
                 .registerOnSharedPreferenceChangeListener(this);
@@ -438,6 +464,43 @@ public class MainActivity extends AppCompatActivity
                         });
                 mPendingGeofenceTask = PendingGeofenceTask.NONE;
             }
+        }
+    }
+
+    /**
+     *
+     * @return if 'Do Not Disturb' has been granted for the app.
+     */
+    public boolean checkPermissionDoNotDisturb(){
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        return mNotificationManager.isNotificationPolicyAccessGranted();
+    }
+
+
+    /**
+     * Request permission to 'Do Not Disturb' settings
+     *
+     */
+    public void requestPermissionDoNotDisturb(){
+
+        // Check if the notification policy access has been granted for the app.
+        if (!checkPermissionDoNotDisturb()) {
+
+            //Display Alert to grant access to 'Do Not Disturb'
+            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+            alertDialog.setTitle("Allow access to 'Do Not Disturb'");
+            alertDialog.setMessage("Please allow the app to access 'Do Not Disturb' to ensure that the library function works properly.");
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+
+                            // Open 'Do Not Disturb' access Settings
+                            Intent intent = new Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+                            startActivity(intent);
+                            dialog.dismiss();
+                        }
+                    });
+            alertDialog.show();
         }
     }
 }

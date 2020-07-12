@@ -90,8 +90,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                                 .getString(MainActivity.DETECTED_ACTIVITY, ""));
 
                 for (DetectedActivity d : detectedActivities) {
-                    if (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
-                        d.getType() == DetectedActivity.RUNNING && d.getConfidence() >= 30) {
+                    if (true || (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
+                        d.getType() == DetectedActivity.RUNNING && d.getConfidence() >= 30)) {
                         //Trigger RMV
                         openRMVDepartures();
                         break;
@@ -123,8 +123,8 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
                                 .getString(MainActivity.DETECTED_ACTIVITY, ""));
 
                 for (DetectedActivity d : detectedActivities) {
-                    if (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
-                            d.getType() == DetectedActivity.STILL && d.getConfidence() <= 20) {
+                    if (true || (d.getType() == DetectedActivity.ON_FOOT && d.getConfidence() >= 50 &&
+                            d.getType() == DetectedActivity.STILL && d.getConfidence() <= 20)) {
                         //Trigger MENSA
                         openMensaApp();
                         break;
@@ -269,5 +269,26 @@ public class GeofenceTransitionsJobIntentService extends JobIntentService {
         startActivity(intent);
 
 
+    }
+
+    /**
+     * Enables Library Mode (Notifications and Vibration are suppressed)
+     */
+    public void enableBibMode(){
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        // Check if the notification policy access has been granted for the app.
+        if(checkPermissionDoNotDisturb())
+            // All notifications are suppressed and all audio streams (except those used for phone calls) and vibrations are muted.
+            mNotificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE);
+    }
+
+    /**
+     *
+     * @return if 'Do Not Disturb' has been granted for the app.
+     */
+    public boolean checkPermissionDoNotDisturb(){
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        return mNotificationManager.isNotificationPolicyAccessGranted();
     }
 }
